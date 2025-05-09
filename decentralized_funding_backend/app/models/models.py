@@ -55,6 +55,7 @@ class DonorProfile(MongoBaseModel):
 
 class UserBase(MongoBaseModel):
     email: EmailStr
+    password: str
     username: str
     role: UserRole = UserRole.STUDENT
     full_name: Optional[str] = None
