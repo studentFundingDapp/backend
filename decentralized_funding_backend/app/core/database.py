@@ -7,10 +7,11 @@ load_dotenv()
 MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "decentralized_funding")
 
+
 class Database:
     client: AsyncIOMotorClient = None
     db = None
-    
+
     @classmethod
     async def connect_to_mongo(cls):
         cls.client = AsyncIOMotorClient(MONGODB_URL)
@@ -31,5 +32,6 @@ class Database:
     @classmethod
     def get_db(cls):
         return cls.db
+
 
 db = Database()
