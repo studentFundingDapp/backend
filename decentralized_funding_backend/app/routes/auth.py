@@ -14,7 +14,7 @@ from datetime import timedelta
 
 router = APIRouter()
 
-@router.post("/signup")
+@router.post("/register")
 async def signup(user: UserBase):
     db = Database.get_db()
     if await db["users"].find_one({"email": user.email}):

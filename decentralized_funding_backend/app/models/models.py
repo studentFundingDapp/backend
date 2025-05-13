@@ -65,6 +65,7 @@ class DonorProfile(MongoBaseModel):
 
 class UserBase(MongoBaseModel):
     email: EmailStr
+    password: str
     username: str
     full_name: Optional[str] = None
     wallet_address: Optional[str] = None
