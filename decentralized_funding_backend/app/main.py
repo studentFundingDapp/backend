@@ -5,9 +5,9 @@ from fastapi.responses import JSONResponse
 from app.core.database import Database
 # Import all necessary routers
 from app.routes import student_transactions # Assuming this is your new router file
-from app.routes import user_router # Assuming you have a user router
-from app.routes import project_router # Assuming you have a project router
-from app.routes import donation_router # Assuming you have a donation router
+from app.routes import user_routes # Assuming you have a user router
+from app.routes import project_routes # Assuming you have a project router
+from app.routes import donation_routes # Assuming you have a donation router
 from app.routes import auth # Assuming this is your auth router
 
 from typing import Dict, Any, List, Optional
@@ -49,9 +49,9 @@ async def shutdown_db_client():
 # Include routers
 # Ensure the router variables match your imported router files
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
-app.include_router(user_router.router, prefix="/api/users", tags=["users"]) # Assuming user_router is a module with a 'router' instance
-app.include_router(project_router.router, prefix="/api/projects", tags=["projects"]) # Assuming project_router is a module with a 'router' instance
-app.include_router(donation_router.router, prefix="/api/donations", tags=["donations"]) # Assuming donation_router is a module with a 'router' instance
+app.include_router(user_routes.router, prefix="/api/users", tags=["users"]) # Assuming user_router is a module with a 'router' instance
+app.include_router(project_routes.router, prefix="/api/projects", tags=["projects"]) # Assuming project_router is a module with a 'router' instance
+app.include_router(donation_routes.router, prefix="/api/donations", tags=["donations"]) # Assuming donation_router is a module with a 'router' instance
 app.include_router(student_transactions.router, prefix="/api/stellar", tags=["stellar"]) # Include the new stellar transactions router
 
 # Custom docs endpoints
