@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse
 from app.core.database import Database
-from app.routes import user_router, project_router, donation_router, auth_router
+from app.routes import student_transactions, user_router, project_router, donation_router, auth_router
 from typing import Dict, Any
 
 # Initialize FastAPI app without OpenAPI
@@ -39,6 +39,7 @@ app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(user_router, prefix="/api/users", tags=["users"])
 app.include_router(project_router, prefix="/api/projects", tags=["projects"])
 app.include_router(donation_router, prefix="/api/donations", tags=["donations"])
+app.include_router(student_transactions.router, prefix="/stellar", tags=["stellar"]) # Add the new router
 
 # Custom docs endpoints
 @app.get("/docs", include_in_schema=False)
