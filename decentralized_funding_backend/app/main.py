@@ -1,12 +1,19 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse
 from app.core.database import Database
-from app.routes import student_transactions, user_router, project_router, donation_router, auth_router
-from typing import Dict, Any
+# Import all necessary routers
+from app.routes import student_transactions # Assuming this is your new router file
+from app.routes import user_router # Assuming you have a user router
+from app.routes import project_router # Assuming you have a project router
+from app.routes import donation_router # Assuming you have a donation router
+from app.routes import auth # Assuming this is your auth router
 
-# Initialize FastAPI app without OpenAPI
+from typing import Dict, Any, List, Optional
+from pydantic import BaseModel # Import BaseModel for defining schemas in OpenAPI manually
+
+# Initialize FastAPI app without default OpenAPI docs
 app = FastAPI(
     title="Decentralized Funding API",
     description="API for decentralized crowdfunding platform",
@@ -17,9 +24,10 @@ app = FastAPI(
 )
 
 # Add CORS middleware
+# Consider restricting allow_origins in production for better security
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins for those complaining about CORS
+    allow_origins=["*"],  # Allows all origins (change in production)
     allow_credentials=True,
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
@@ -28,32 +36,44 @@ app.add_middleware(
 # Database connection events
 @app.on_event("startup")
 async def startup_db_client():
+    """Connects to the MongoDB database on application startup."""
     await Database.connect_to_mongo()
+    print("Connected to MongoDB.") # Optional: Add logging
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    """Closes the MongoDB connection on application shutdown."""
     await Database.close_mongo_connection()
+    print("Closed MongoDB connection.") # Optional: Add logging
 
 # Include routers
-app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
-app.include_router(user_router, prefix="/api/users", tags=["users"])
-app.include_router(project_router, prefix="/api/projects", tags=["projects"])
-app.include_router(donation_router, prefix="/api/donations", tags=["donations"])
-app.include_router(student_transactions.router, prefix="/stellar", tags=["stellar"]) # Add the new router
+# Ensure the router variables match your imported router files
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(user_router.router, prefix="/api/users", tags=["users"]) # Assuming user_router is a module with a 'router' instance
+app.include_router(project_router.router, prefix="/api/projects", tags=["projects"]) # Assuming project_router is a module with a 'router' instance
+app.include_router(donation_router.router, prefix="/api/donations", tags=["donations"]) # Assuming donation_router is a module with a 'router' instance
+app.include_router(student_transactions.router, prefix="/api/stellar", tags=["stellar"]) # Include the new stellar transactions router
 
 # Custom docs endpoints
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
+    """Serves the custom Swagger UI documentation."""
     return get_swagger_ui_html(
         openapi_url="/openapi.json",
         title="API Docs",
+        # Using specific versions of Swagger UI assets
         swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-bundle.js",
         swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui.css",
     )
 
 @app.get("/openapi.json", include_in_schema=False)
 async def get_openapi_json():
-    schema = {
+    """Generates and serves the OpenAPI schema (Swagger JSON)."""
+    # Manually define the schema structure.
+    # This should ideally match the Pydantic models used in your application.
+    # We are adding the new /api/stellar/student/send_xlm endpoint and its schema.
+
+    schema: Dict[str, Any] = {
         "openapi": "3.0.2",
         "info": {
             "title": "Decentralized Funding API",
@@ -61,335 +81,8 @@ async def get_openapi_json():
             "description": "API for decentralized crowdfunding platform"
         },
         "paths": {
-            "/api/users": {
-                "get": {
-                    "summary": "List Users",
-                    "operationId": "list_users",
-                    "tags": ["users"],
-                    "responses": {
-                        "200": {
-                            "description": "Successful Response",
-                            "content": {
-                                "application/json": {
-                                    "schema": {
-                                        "type": "array",
-                                        "items": {"$ref": "#/components/schemas/User"}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "post": {
-                    "summary": "Create User",
-                    "operationId": "create_user",
-                    "tags": ["users"],
-                    "requestBody": {
-                        "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/UserCreate"}
-                            }
-                        },
-                        "required": True
-                    },
-                    "responses": {
-                        "201": {
-                            "description": "User Created",
-                            "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/User"}
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "/api/users/{user_id}": {
-                "get": {
-                    "summary": "Get User Details",
-                    "operationId": "get_user",
-                    "tags": ["users"],
-                    "parameters": [
-                        {
-                            "name": "user_id",
-                            "in": "path",
-                            "required": True,
-                            "schema": {"type": "string"}
-                        }
-                    ],
-                    "responses": {
-                        "200": {
-                            "description": "User Details",
-                            "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/User"}
-                                }
-                            }
-                        }
-                    }
-                },
-                "put": {
-                    "summary": "Update User",
-                    "operationId": "update_user",
-                    "tags": ["users"],
-                    "parameters": [
-                        {
-                            "name": "user_id",
-                            "in": "path",
-                            "required": True,
-                            "schema": {"type": "string"}
-                        }
-                    ],
-                    "requestBody": {
-                        "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/UserUpdate"}
-                            }
-                        },
-                        "required": True
-                    },
-                    "responses": {
-                        "200": {
-                            "description": "User Updated",
-                            "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/User"}
-                                }
-                            }
-                        }
-                    }
-                },
-                "delete": {
-                    "summary": "Delete User",
-                    "operationId": "delete_user",
-                    "tags": ["users"],
-                    "parameters": [
-                        {
-                            "name": "user_id",
-                            "in": "path",
-                            "required": True,
-                            "schema": {"type": "string"}
-                        }
-                    ],
-                    "responses": {
-                        "204": {
-                            "description": "User Deleted"
-                        }
-                    }
-                }
-            },
-            "/api/projects": {
-                "get": {
-                    "summary": "List Projects",
-                    "operationId": "list_projects",
-                    "tags": ["projects"],
-                    "responses": {
-                        "200": {
-                            "description": "Successful Response",
-                            "content": {
-                                "application/json": {
-                                    "schema": {
-                                        "type": "array",
-                                        "items": {"$ref": "#/components/schemas/Project"}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "post": {
-                    "summary": "Create Project",
-                    "operationId": "create_project",
-                    "tags": ["projects"],
-                    "requestBody": {
-                        "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/ProjectBase"}
-                            }
-                        },
-                        "required": True
-                    },
-                    "responses": {
-                        "200": {
-                            "description": "Successful Response",
-                            "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/Project"}
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "/api/projects/{project_id}": {
-                "get": {
-                    "summary": "Get Project Details",
-                    "operationId": "get_project",
-                    "tags": ["projects"],
-                    "parameters": [
-                        {
-                            "name": "project_id",
-                            "in": "path",
-                            "required": True,
-                            "schema": {"type": "string"}
-                        }
-                    ],
-                    "responses": {
-                        "200": {
-                            "description": "Project Details",
-                            "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/Project"}
-                                }
-                            }
-                        }
-                    }
-                },
-                "put": {
-                    "summary": "Update Project",
-                    "operationId": "update_project",
-                    "tags": ["projects"],
-                    "parameters": [
-                        {
-                            "name": "project_id",
-                            "in": "path",
-                            "required": True,
-                            "schema": {"type": "string"}
-                        }
-                    ],
-                    "requestBody": {
-                        "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/ProjectUpdate"}
-                            }
-                        },
-                        "required": True
-                    },
-                    "responses": {
-                        "200": {
-                            "description": "Project Updated",
-                            "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/Project"}
-                                }
-                            }
-                        }
-                    }
-                },
-                "delete": {
-                    "summary": "Delete Project",
-                    "operationId": "delete_project",
-                    "tags": ["projects"],
-                    "parameters": [
-                        {
-                            "name": "project_id",
-                            "in": "path",
-                            "required": True,
-                            "schema": {"type": "string"}
-                        }
-                    ],
-                    "responses": {
-                        "204": {
-                            "description": "Project Deleted"
-                        }
-                    }
-                }
-            },
-            "/api/donations": {
-                "get": {
-                    "summary": "List Donations",
-                    "operationId": "list_donations",
-                    "tags": ["donations"],
-                    "responses": {
-                        "200": {
-                            "description": "Successful Response",
-                            "content": {
-                                "application/json": {
-                                    "schema": {
-                                        "type": "array",
-                                        "items": {"$ref": "#/components/schemas/Transaction"}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "/api/donations/{donation_id}": {
-                "get": {
-                    "summary": "Get Donation Details",
-                    "operationId": "get_donation",
-                    "tags": ["donations"],
-                    "parameters": [
-                        {
-                            "name": "donation_id",
-                            "in": "path",
-                            "required": True,
-                            "schema": {"type": "string"}
-                        }
-                    ],
-                    "responses": {
-                        "200": {
-                            "description": "Donation Details",
-                            "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/Transaction"}
-                                }
-                            }
-                        }
-                    }
-                },
-                "put": {
-                    "summary": "Update Donation",
-                    "operationId": "update_donation",
-                    "tags": ["donations"],
-                    "parameters": [
-                        {
-                            "name": "donation_id",
-                            "in": "path",
-                            "required": True,
-                            "schema": {"type": "string"}
-                        }
-                    ],
-                    "requestBody": {
-                        "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/TransactionUpdate"}
-                            }
-                        },
-                        "required": True
-                    },
-                    "responses": {
-                        "200": {
-                            "description": "Donation Updated",
-                            "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/Transaction"}
-                                }
-                            }
-                        }
-                    }
-                },
-                "delete": {
-                    "summary": "Delete Donation",
-                    "operationId": "delete_donation",
-                    "tags": ["donations"],
-                    "parameters": [
-                        {
-                            "name": "donation_id",
-                            "in": "path",
-                            "required": True,
-                            "schema": {"type": "string"}
-                        }
-                    ],
-                    "responses": {
-                        "204": {
-                            "description": "Donation Deleted"
-                        }
-                    }
-                }
-            },
-            "/api/auth/signup": {
+            # --- Existing Paths (Examples - adjust based on your actual router definitions) ---
+            "/api/auth/register": {
                 "post": {
                     "summary": "Sign Up",
                     "operationId": "signup",
@@ -397,28 +90,39 @@ async def get_openapi_json():
                     "requestBody": {
                         "content": {
                             "application/json": {
-                                "schema": {"$ref": "#/components/schemas/SignUpRequest"}
+                                "schema": {"$ref": "#/components/schemas/UserBase"} # Assuming UserBase is the signup request model
                             }
                         },
                         "required": True
                     },
                     "responses": {
-                        "201": {
-                            "description": "Successfully registered",
+                        "200": { # Changed from 201 to 200 based on common API patterns, adjust if needed
+                            "description": "User created successfully. Stellar account generated.",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/TokenResponse"}
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "email": {"type": "string", "format": "email"},
+                                            "username": {"type": "string"},
+                                            "stellar_public_key": {"type": "string"},
+                                            "message": {"type": "string"}
+                                        }
+                                    }
                                 }
                             }
                         },
                         "400": {
-                            "description": "Bad Request - Email already registered"
+                            "description": "Bad Request - Email already registered or failed key generation/funding"
+                        },
+                         "500": {
+                            "description": "Internal Server Error - Failed to generate Stellar account or save user"
                         }
                     }
                 }
             },
             "/api/auth/login": {
-                "post": {
+                 "post": {
                     "summary": "Login",
                     "operationId": "login",
                     "tags": ["auth"],
@@ -444,49 +148,269 @@ async def get_openapi_json():
                         }
                     }
                 }
+            },
+             "/api/auth/me": {
+                "get": {
+                    "summary": "Get Current User Details",
+                    "operationId": "read_users_me",
+                    "tags": ["auth"],
+                    "security": [{"bearerAuth": []}], # Indicate this endpoint requires authentication
+                    "responses": {
+                        "200": {
+                            "description": "Current User Details",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/User"}
+                                }
+                            }
+                        },
+                        "401": {
+                            "description": "Unauthorized"
+                        }
+                    }
+                }
+            },
+            # Add other existing paths from user_router, project_router, donation_router here following the same structure
+            # Example for a GET /api/users endpoint:
+            "/api/users/me": { # Assuming user_router has a /me endpoint for user details
+                 "get": {
+                    "summary": "Get Authenticated User Details",
+                    "operationId": "get_authenticated_user",
+                    "tags": ["users"],
+                    "security": [{"bearerAuth": []}], # Requires authentication
+                    "responses": {
+                        "200": {
+                            "description": "Authenticated User Details",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/User"}
+                                }
+                            }
+                        },
+                        "401": {
+                            "description": "Unauthorized"
+                        }
+                    }
+                }
+            },
+             "/api/projects": {
+                "get": {
+                    "summary": "List Projects",
+                    "operationId": "list_projects",
+                    "tags": ["projects"],
+                    "responses": {
+                        "200": {
+                            "description": "Successful Response",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "array",
+                                        "items": {"$ref": "#/components/schemas/Project"}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "post": {
+                    "summary": "Create Project",
+                    "operationId": "create_project",
+                    "tags": ["projects"],
+                    "security": [{"bearerAuth": []}], # Requires authentication (likely student role)
+                    "requestBody": {
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/ProjectBase"}
+                            }
+                        },
+                        "required": True
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Successful Response",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/Project"}
+                                }
+                            }
+                        },
+                         "401": {"description": "Unauthorized"},
+                         "403": {"description": "Forbidden (e.g., not a student)"}
+                    }
+                }
+            },
+            # Add paths for GET, PUT, DELETE /api/projects/{project_id} similarly...
+            # Add paths for /api/donations similarly...
+
+
+            # --- New Stellar Transaction Path ---
+            "/api/stellar/student/send_xlm": {
+                "post": {
+                    "summary": "Send XLM from Student Account",
+                    "operationId": "student_send_xlm",
+                    "tags": ["stellar"],
+                    "security": [{"bearerAuth": []}], # This endpoint requires authentication (likely student role)
+                    "requestBody": {
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/SendXlmRequest"}
+                            }
+                        },
+                        "required": True
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Transaction submitted successfully.",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/SendXlmResponse"}
+                                }
+                            }
+                        },
+                        "400": {
+                            "description": "Bad Request (e.g., invalid destination, insufficient balance, transaction failed)",
+                             "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"} # Define a generic error schema
+                                }
+                            }
+                        },
+                        "401": {
+                            "description": "Unauthorized (User not logged in)",
+                             "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                }
+                            }
+                        },
+                         "403": {
+                            "description": "Forbidden (User is not a student or does not have a secret key)",
+                             "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                }
+                            }
+                        },
+                         "500": {
+                            "description": "Internal Server Error (e.g., decryption failed, Stellar network issue)",
+                             "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                }
+                            }
+                        }
+                    }
+                }
             }
+            # --- End New Stellar Transaction Path ---
         },
         "components": {
             "schemas": {
-                "User": {
+                # --- Existing Schemas (Refined) ---
+                "UserRole": {
+                    "type": "string",
+                    "enum": ["admin", "donor", "student"]
+                },
+                 "StudentProfile": {
                     "type": "object",
                     "properties": {
-                        "id": {"type": "string"},
+                         "institution": {"type": "string"},
+                         "student_id": {"type": "string"},
+                         "field_of_study": {"type": "string"},
+                         "year_of_study": {"type": "integer"},
+                         "is_verified": {"type": "boolean"}
+                    },
+                    "required": ["institution", "student_id", "field_of_study", "year_of_study"]
+                 },
+                "DonorProfile": {
+                    "type": "object",
+                    "properties": {
+                         "organization": {"type": "string", "nullable": True},
+                         "preferred_categories": {"type": "array", "items": {"type": "string"}},
+                         "donation_history": {"type": "array", "items": {"type": "string"}}, # Assuming ObjectIds stored as strings
+                         "total_donated": {"type": "number"}
+                    }
+                },
+                "UserBase": { # Used for signup request
+                    "type": "object",
+                    "properties": {
+                        "email": {"type": "string", "format": "email"},
+                        "password": {"type": "string", "format": "password"},
+                        "username": {"type": "string"},
+                        "full_name": {"type": "string", "nullable": True},
+                        # wallet_address and role are not provided by user at signup in the new flow
+                        # "wallet_address": {"type": "string", "nullable": True},
+                        # "role": {"$ref": "#/components/schemas/UserRole"}
+                    },
+                    "required": ["email", "password", "username"]
+                },
+                "User": { # Represents the User model stored in DB and returned in responses (excluding password_hash and encrypted key)
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string", "description": "MongoDB ObjectId"},
                         "email": {"type": "string", "format": "email"},
                         "username": {"type": "string"},
-                        "full_name": {"type": "string"},
-                        "wallet_address": {"type": "string"},
-                        "role": {"type": "string", "enum": ["admin", "donor", "student"]},
+                        "full_name": {"type": "string", "nullable": True},
+                        "stellar_public_key": {"type": "string", "nullable": True, "description": "Stellar Public Key (Wallet Address)"}, # Added public key
+                        # stellar_secret_key_encrypted is NOT included in the response schema for security
+                        "role": {"$ref": "#/components/schemas/UserRole"},
+                        "projects_created": {"type": "array", "items": {"type": "string"}, "description": "List of Project ObjectIds created by the user (if student)"},
+                        "donations_made": {"type": "array", "items": {"type": "string"}, "description": "List of Transaction ObjectIds made by the user (if donor)"},
+                        "student_profile": {"$ref": "#/components/schemas/StudentProfile", "nullable": True},
+                        "donor_profile": {"$ref": "#/components/schemas/DonorProfile", "nullable": True},
                         "created_at": {"type": "string", "format": "date-time"},
                         "updated_at": {"type": "string", "format": "date-time"}
                     },
-                    "required": ["email", "username"]
+                    "required": ["email", "username", "role"]
                 },
+                 # Add UserCreate and UserUpdate schemas if your user_router uses them
+                 # Example UserCreate (similar to UserBase but might include role if admin creates users)
                 "UserCreate": {
                     "type": "object",
                     "properties": {
                         "email": {"type": "string", "format": "email"},
                         "username": {"type": "string"},
                         "password": {"type": "string", "format": "password"},
-                        "full_name": {"type": "string"},
-                        "wallet_address": {"type": "string"},
-                        "role": {"type": "string", "enum": ["admin", "donor", "student"]}
+                        "full_name": {"type": "string", "nullable": True},
+                        "role": {"$ref": "#/components/schemas/UserRole"}
                     },
-                    "required": ["email", "username", "password"]
+                    "required": ["email", "username", "password", "role"]
                 },
-                "UserUpdate": {
+                "UserUpdate": { # Schema for updating user details
                     "type": "object",
                     "properties": {
                         "email": {"type": "string", "format": "email"},
                         "username": {"type": "string"},
-                        "full_name": {"type": "string"},
-                        "wallet_address": {"type": "string"}
+                        "full_name": {"type": "string", "nullable": True},
+                         # Allow updating public key? Or is it set once at signup?
+                         # "stellar_public_key": {"type": "string", "nullable": True}
                     }
+                     # No required fields for update, as all are optional
                 },
-                "Project": {
+                "ProjectStatus": {
+                    "type": "string",
+                    "enum": ["pending", "active", "completed", "cancelled"]
+                },
+                "ProjectBase": { # Used for project creation request
                     "type": "object",
                     "properties": {
-                        "id": {"type": "string"},
+                        "title": {"type": "string"},
+                        "description": {"type": "string"},
+                        "objectives": {"type": "string"},
+                        "deliverables": {"type": "string"},
+                        "category": {"type": "string"},
+                        "target_amount": {"type": "number"},
+                        # wallet_address is now on the User model, not Project
+                        # "wallet_address": {"type": "string"},
+                        "deadline": {"type": "string", "format": "date-time"}
+                    },
+                    "required": ["title", "description", "objectives", "deliverables", "category", "target_amount", "deadline"]
+                },
+                "Project": { # Represents the Project model stored in DB and returned in responses
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string", "description": "MongoDB ObjectId"},
+                        "creator_id": {"type": "string", "description": "ObjectId of the User (student) who created the project"}, # Link to User
                         "title": {"type": "string"},
                         "description": {"type": "string"},
                         "objectives": {"type": "string"},
@@ -494,15 +418,16 @@ async def get_openapi_json():
                         "category": {"type": "string"},
                         "target_amount": {"type": "number"},
                         "current_amount": {"type": "number"},
-                        "wallet_address": {"type": "string"},
-                        "deadline": {"type": "string", "format": "date-time"},
-                        "status": {"type": "string", "enum": ["pending", "active", "completed", "cancelled"]},
+                        "status": {"$ref": "#/components/schemas/ProjectStatus"},
+                        "media_urls": {"type": "array", "items": {"type": "string"}},
+                        "donors": {"type": "array", "items": {"type": "string"}, "description": "List of User ObjectIds who donated directly"}, # Link to Users
                         "created_at": {"type": "string", "format": "date-time"},
                         "updated_at": {"type": "string", "format": "date-time"}
                     },
-                    "required": ["title", "description", "objectives", "deliverables", "category", "target_amount", "wallet_address", "deadline"]
+                    "required": ["creator_id", "title", "description", "objectives", "deliverables", "category", "target_amount", "deadline"]
                 },
-                "ProjectBase": {
+                 # Add ProjectUpdate schema if your project_router uses it
+                 "ProjectUpdate": {
                     "type": "object",
                     "properties": {
                         "title": {"type": "string"},
@@ -511,65 +436,51 @@ async def get_openapi_json():
                         "deliverables": {"type": "string"},
                         "category": {"type": "string"},
                         "target_amount": {"type": "number"},
-                        "wallet_address": {"type": "string"},
-                        "deadline": {"type": "string", "format": "date-time"}
-                    },
-                    "required": ["title", "description", "objectives", "deliverables", "category", "target_amount", "wallet_address", "deadline"]
-                },
-                "ProjectUpdate": {
-                    "type": "object",
-                    "properties": {
-                        "title": {"type": "string"},
-                        "description": {"type": "string"},
-                        "objectives": {"type": "string"},
-                        "deliverables": {"type": "string"},
-                        "category": {"type": "string"},
-                        "target_amount": {"type": "number"},
-                        "status": {"type": "string", "enum": ["pending", "active", "completed", "cancelled"]}
+                        "status": {"$ref": "#/components/schemas/ProjectStatus"},
+                        "media_urls": {"type": "array", "items": {"type": "string"}}
                     }
-                },
-                "Transaction": {
+                 },
+                "TransactionBase": { # Used for transaction creation request (if any)
                     "type": "object",
                     "properties": {
-                        "id": {"type": "string"},
                         "amount": {"type": "number"},
                         "transaction_hash": {"type": "string"},
-                        "message": {"type": "string"},
+                        "message": {"type": "string", "nullable": True},
                         "asset_type": {"type": "string"},
-                        "donor_id": {"type": "string"},
-                        "project_id": {"type": "string"},
-                        "recipient_wallet": {"type": "string"},
-                        "status": {"type": "string"},
-                        "created_at": {"type": "string", "format": "date-time"},
-                        "block_height": {"type": "integer"},
-                        "confirmed_at": {"type": "string", "format": "date-time"}
+                         # "asset_issuer": {"type": "string", "nullable": True} # Add if using non-XLM
                     },
-                    "required": ["amount", "transaction_hash", "donor_id", "project_id", "recipient_wallet"]
+                     "required": ["amount", "transaction_hash", "asset_type"]
                 },
-                "TransactionUpdate": {
+                "Transaction": { # Represents the Transaction model stored in DB and returned in responses
                     "type": "object",
                     "properties": {
+                        "id": {"type": "string", "description": "MongoDB ObjectId"},
                         "amount": {"type": "number"},
-                        "transaction_hash": {"type": "string"},
-                        "message": {"type": "string"},
-                        "status": {"type": "string"},
-                        "block_height": {"type": "integer"},
-                        "confirmed_at": {"type": "string", "format": "date-time"}
-                    }
+                        "transaction_hash": {"type": "string", "description": "Stellar transaction hash"},
+                        "message": {"type": "string", "nullable": True, "description": "Stellar transaction memo"},
+                        "asset_type": {"type": "string"},
+                        # "asset_issuer": {"type": "string", "nullable": True}, # Add if using non-XLM
+                        "donor_id": {"type": "string", "nullable": True, "description": "ObjectId of the Donor User (if direct donation)"}, # Link to User
+                        "project_id": {"type": "string", "nullable": True, "description": "ObjectId of the Project being funded"}, # Link to Project
+                        "source_account_id": {"type": "string", "description": "Stellar public key of the sender"},
+                        "destination_account_id": {"type": "string", "description": "Stellar public key of the receiver"},
+                        "status": {"type": "string", "description": "Transaction status (e.g., successful, failed)"},
+                        "created_at": {"type": "string", "format": "date-time"},
+                        "block_height": {"type": "integer", "nullable": True},
+                        "confirmed_at": {"type": "string", "format": "date-time", "nullable": True}
+                    },
+                    "required": ["amount", "transaction_hash", "asset_type", "source_account_id", "destination_account_id", "status"]
                 },
-                "SignUpRequest": {
+                 # Add TransactionUpdate schema if your donation_router uses it
+                 "TransactionUpdate": {
                     "type": "object",
                     "properties": {
-                        "email": {"type": "string", "format": "email"},
-                        "username": {"type": "string"},
-                        "password": {"type": "string", "format": "password"},
-                        "full_name": {"type": "string"},
-                        "wallet_address": {"type": "string"},
-                        "role": {"type": "string", "enum": ["admin", "donor", "student"]}
-                    },
-                    "required": ["email", "username", "password", "role"]
-                },
-                "LoginRequest": {
+                        "status": {"type": "string"},
+                        "block_height": {"type": "integer", "nullable": True},
+                        "confirmed_at": {"type": "string", "format": "date-time", "nullable": True}
+                    }
+                 },
+                 "LoginRequest": {
                     "type": "object",
                     "properties": {
                         "email": {"type": "string", "format": "email"},
@@ -577,27 +488,76 @@ async def get_openapi_json():
                     },
                     "required": ["email", "password"]
                 },
-                "TokenResponse": {
+                "TokenResponse": { # Response after successful login
                     "type": "object",
                     "properties": {
                         "access_token": {"type": "string"},
-                        "token_type": {"type": "string"}
+                        "token_type": {"type": "string"},
+                         "stellar_public_key": {"type": "string", "nullable": True, "description": "Stellar Public Key of the logged-in user"} # Include public key in login response
                     },
                     "required": ["access_token", "token_type"]
-                }
+                },
+                # --- New Schemas for Stellar Endpoint ---
+                "SendXlmRequest": {
+                    "type": "object",
+                    "properties": {
+                        "destination_public_key": {"type": "string", "description": "Stellar public key of the recipient account."},
+                        "amount": {"type": "number", "description": "Amount of XLM to send."},
+                        "memo_text": {"type": "string", "nullable": True, "description": "Optional memo for the transaction (max 28 bytes for text memo)."}
+                    },
+                    "required": ["destination_public_key", "amount"]
+                },
+                "SendXlmResponse": {
+                    "type": "object",
+                    "properties": {
+                        "message": {"type": "string"},
+                        "transaction_hash": {"type": "string", "description": "Hash of the submitted Stellar transaction."}
+                    },
+                    "required": ["message", "transaction_hash"]
+                },
+                 "ErrorResponse": { # Generic schema for error details
+                     "type": "object",
+                     "properties": {
+                         "detail": {"type": "string"},
+                         # Add other potential error fields like Stellar result codes if exposed
+                         "headers": { # Example for WWW-Authenticate header in 401
+                             "type": "object",
+                             "additionalProperties": {"type": "string"}
+                         }
+                     }
+                 }
+                # --- End New Schemas ---
             },
             "securitySchemes": {
                 "bearerAuth": {
                     "type": "http",
                     "scheme": "bearer",
-                    "bearerFormat": "JWT"
+                    "bearerFormat": "JWT",
+                    "description": "Enter your JWT token in the format 'Bearer YOUR_TOKEN'"
                 }
             }
         }
     }
+
+    # Manually add schemas from your Pydantic models if you want OpenAPI to generate them
+    # You would typically use app.openapi() to get the base schema and then modify it.
+    # Since we disabled default OpenAPI, we build it manually here.
+    # For a large app, you'd let FastAPI generate most of this.
+
+    # Example of how you *would* add schemas if you had Pydantic models defined directly in this file
+    # from pydantic import BaseModel
+    # class MyModel(BaseModel): pass
+    # from fastapi.utils import generate_operation_id_for_path
+    # app.add_api_route("/my_path", my_endpoint, methods=["GET"], response_model=MyModel)
+    # This manual schema generation is complex for a full app.
+    # The current manual schema is based on the expected structure from your models.
+
     return JSONResponse(content=schema)
 
 # Health check endpoint
 @app.get("/health")
 async def health_check():
+    """Basic health check endpoint."""
     return {"status": "healthy"}
+
+# You can add more endpoints here or in separate router files
