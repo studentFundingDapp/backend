@@ -1,6 +1,6 @@
 # Assuming 'server' is initialized from 2.1.2
 from stellar_sdk.exceptions import NotFoundError
-
+from stellar_utils import server
 def get_account_balances(account_id: str):
     """Queries the balances for a given Stellar account ID."""
     try:
@@ -15,8 +15,8 @@ def get_account_balances(account_id: str):
         return None
 
 # Example usage:
-# student_public_key = "G..." # Get from your database
-# account_info = get_account_balances(student_public_key)
-# if account_info:
-#     for balance in account_info:
-#         print(f"Asset: {balance.asset_code}, Balance: {balance.balance}")
+student_public_key = "GBKXKXVHTUDKBI6MZPEWBJIO6PNIJHU5XAYWAPO25TM3JQEFZGBW6KLE" # Get from your database
+account_info = get_account_balances(student_public_key)
+if account_info:
+    for balance in account_info:
+        print(f"Asset: {balance.asset_code}, Balance: {balance.balance}")

@@ -13,8 +13,8 @@ def fund_testnet_account(public_key: str):
         return False
 
 # Example usage after creating keypair:
-# success = fund_testnet_account(new_account_keys["public_key"])
-# if success:
-#     print("Account funded on Testnet.")
-# else:
-#     print("Failed to fund account on Testnet.")
+success = fund_testnet_account("GA2ZEGMMECSVHJPGEVJQN5ZLNL6R7HRE26EB7EWADBKJCPUUR35J5DUF")
+if success:
+    print("Account funded on Testnet.")
+else:
+    print("Failed to fund account on Testnet.")

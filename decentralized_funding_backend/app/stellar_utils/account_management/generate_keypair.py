@@ -9,6 +9,6 @@ def generate_stellar_keypair():
     }
 
 # Example usage:
-# new_account_keys = generate_stellar_keypair()
-# print("Public Key:", new_account_keys["public_key"])
-# print("Secret Key:", new_account_keys["secret_key"]) # Keep this secret!
+new_account_keys = generate_stellar_keypair()
+print("Public Key:", new_account_keys["public_key"])
+print("Secret Key:", new_account_keys["secret_key"]) # Keep this secret!
