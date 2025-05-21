@@ -301,7 +301,52 @@ async def get_openapi_json():
                         }
                     }
                 }
+            },
+            "/student/balance": {
+  "get": {
+    "summary": "Get Student Stellar Balance",
+    "operationId": "getStudentBalance",
+    "tags": ["student"],
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "Successfully retrieved the student's Stellar account balances.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "public_key": {
+                  "type": "string",
+                  "description": "Stellar public key associated with the student"
+                },
+                "balances": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "asset_type": { "type": "string" },
+                      "asset_code": { "type": "string" },
+                      "balance": { "type": "string" }
+                    }
+                  }
+                }
+              }
             }
+          }
+        }
+      },
+      "400": {
+        "description": "Bad Request - No Stellar public key associated with the student account."
+      },
+      "403": {
+        "description": "Forbidden - Only students are allowed to access this route."
+      },
+    }
             # --- End New Stellar Transaction Path ---
         },
         "components": {
@@ -536,6 +581,8 @@ async def get_openapi_json():
                     "description": "Enter your JWT token in the format 'Bearer YOUR_TOKEN'"
                 }
             }
+        }
+    }
         }
     }
 

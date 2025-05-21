@@ -65,7 +65,7 @@ class DonorProfile(MongoBaseModel):
 # Your UserBase model (input for registration - password will be hashed)
 class UserBase(MongoBaseModel):
     email: EmailStr
-    password: str
+    # password: str
     username: str
     full_name: Optional[str] = None
     # wallet_address will be generated, not provided by user at signup
@@ -99,7 +99,8 @@ class User(UserBase):
         arbitrary_types_allowed=True, # Allows PyObjectId and Keypair types if needed directly in models (be careful)
         json_encoders={ObjectId: str}
     )
-
+class UserPublic(UserBase):
+    pass  # For external responses, no password
 # Keep ProjectBase and Project models
 
 class ProjectBase(MongoBaseModel):

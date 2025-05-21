@@ -17,8 +17,9 @@ from datetime import timedelta
 # Import key generation and security functions
 from ..stellar_utils.key_security import generate_stellar_keypair, encrypt_secret_key
 # Import funding function (implement this next, potentially in account_management)
-from ..stellar_utils.account_management import fund_testnet_account # Assuming Testnet for now
+from ..stellar_utils.account_management.fund_testnet_account  import fund_testnet_account # Assuming Testnet for now
 
+# from app.utils.fund_testnet_account import fund_testnet_account
 
 router = APIRouter()
 

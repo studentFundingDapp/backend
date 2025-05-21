@@ -3,6 +3,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from stellar_sdk import Optional
+
+from app.stellar_utils.account_management.get_account_balances import get_account_balances
 # Import necessary modules
 from ..core.database import Database
 from ..core.auth import get_current_user # Assuming this fetches the User model with keys
@@ -94,4 +96,53 @@ async def student_send_xlm(
             status_code=status.HTTP_400_BAD_REQUEST, # Or 500 depending on the error type
             detail=f"Transaction failed: {transaction_result.get('error', 'Unknown error')}",
             headers={"X-Stellar-Result-Codes": str(transaction_result.get('result_codes'))} # Include Stellar specific error codes
+        )
+        
+        
+@router.get("/student/balance", status_code=status.HTTP_200_OK)
+async def get_student_balance(
+    current_user: User = Depends(get_current_user)
+):
+    # 🚫 Ensure only students can access
+    if current_user.role != UserRole.STUDENT:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only students can access this route."
+        )
+
+    # 🧪 Ensure the student has a Stellar public key
+    if not current_user.stellar_public_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No Stellar public key associated with this account."
+        )
+
+    # 🔁 Fetch balance
+    try:
+        balances = get_account_balances(current_user.stellar_public_key)
+        if balances is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Stellar account not found or balance not retrievable."
+            )
+
+        # 🎯 Format response nicely
+        formatted_balances = []
+        for bal in balances:
+            formatted_balances.append({
+                "asset_type": bal.asset_type,
+                "asset_code": bal.asset_code if hasattr(bal, "asset_code") else "XLM",
+                "balance": bal.balance
+            })
+
+        return {
+            "public_key": current_user.stellar_public_key,
+            "balances": formatted_balances
+        }
+
+    except Exception as e:
+        print(f"Error retrieving balance for {current_user.email}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not fetch account balance. Try again later."
         )
