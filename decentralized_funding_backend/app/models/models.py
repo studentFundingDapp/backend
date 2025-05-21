@@ -65,7 +65,7 @@ class DonorProfile(MongoBaseModel):
 # Your UserBase model (input for registration - password will be hashed)
 class UserBase(MongoBaseModel):
     email: EmailStr
-    # password: str
+    password: str
     username: str
     full_name: Optional[str] = None
     # wallet_address will be generated, not provided by user at signup

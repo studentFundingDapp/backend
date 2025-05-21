@@ -244,64 +244,66 @@ async def get_openapi_json():
 
 
             # --- New Stellar Transaction Path ---
-            "/api/stellar/student/send_xlm": {
-                "post": {
-                    "summary": "Send XLM from Student Account",
-                    "operationId": "student_send_xlm",
-                    "tags": ["stellar"],
-                    "security": [{"bearerAuth": []}], # This endpoint requires authentication (likely student role)
-                    "requestBody": {
-                        "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/SendXlmRequest"}
-                            }
-                        },
-                        "required": True
-                    },
-                    "responses": {
-                        "200": {
-                            "description": "Transaction submitted successfully.",
-                            "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/SendXlmResponse"}
-                                }
-                            }
-                        },
-                        "400": {
-                            "description": "Bad Request (e.g., invalid destination, insufficient balance, transaction failed)",
-                             "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"} # Define a generic error schema
-                                }
-                            }
-                        },
-                        "401": {
-                            "description": "Unauthorized (User not logged in)",
-                             "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
-                                }
-                            }
-                        },
-                         "403": {
-                            "description": "Forbidden (User is not a student or does not have a secret key)",
-                             "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
-                                }
-                            }
-                        },
-                         "500": {
-                            "description": "Internal Server Error (e.g., decryption failed, Stellar network issue)",
-                             "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
-                                }
-                            }
-                        }
-                    }
-                }
+"/student/send_xlm": {
+  "post": {
+    "summary": "Send XLM from student account",
+    "operationId": "studentSendXlm",
+    "tags": ["student"],
+    "requestBody": {
+      "required": True,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "destination_public_key": {
+                "type": "string",
+                "description": "Stellar public key of the recipient"
+              },
+              "amount": {
+                "type": "number",
+                "format": "float",
+                "description": "Amount of XLM to send"
+              },
+            "memo_text": {
+              "type": "string",
+              "nullable": True,
+              "description": "Optional memo for the transaction"
+              }
             },
+            "required": ["destination_public_key", "amount"]
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Transaction submitted successfully",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": { "type": "string" },
+                "transaction_hash": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "400": {
+        "description": "Bad Request - Missing or invalid Stellar secret key or transaction failed"
+      },
+      "403": {
+        "description": "Forbidden - Only students can access this route"
+      },
+      "500": {
+        "description": "Internal Server Error - Could not decrypt key or send transaction"
+      }
+    }
+  }
+},
+
             "/student/balance": {
   "get": {
     "summary": "Get Student Stellar Balance",
